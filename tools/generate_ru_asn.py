@@ -263,6 +263,19 @@ def load_previous_count() -> int | None:
     return previous_count
 
 
+def load_existing_meta() -> tuple[dict[str, Any], bytes] | None:
+    if not META_PATH.exists():
+        return None
+    raw = META_PATH.read_bytes()
+    try:
+        meta = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return None
+    if not isinstance(meta, dict):
+        return None
+    return meta, raw
+
+
 def guard_large_change(new_count: int, force_large_change: bool) -> None:
     previous_count = load_previous_count()
     if previous_count is None:
@@ -306,8 +319,19 @@ def generate_outputs(force_large_change: bool, publish_pages: bool) -> dict[str,
     validate_list_bytes(list_bytes, "generated ru_asn.list")
     guard_large_change(len(asns), force_large_change)
 
+    previous_list_bytes = LIST_PATH.read_bytes() if LIST_PATH.exists() else None
+    existing_meta = load_existing_meta()
     meta = build_meta(payload, list_bytes, len(asns))
     meta_bytes = render_meta_bytes(meta)
+
+    if previous_list_bytes == list_bytes and existing_meta is not None:
+        existing_meta_data, existing_meta_bytes = existing_meta
+        if (
+            existing_meta_data.get("sha256") == compute_sha256(list_bytes)
+            and existing_meta_data.get("asn_count") == len(asns)
+        ):
+            meta = existing_meta_data
+            meta_bytes = existing_meta_bytes
 
     atomic_write(LIST_PATH, list_bytes)
     atomic_write(META_PATH, meta_bytes)
