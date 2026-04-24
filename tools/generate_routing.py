@@ -220,22 +220,50 @@ EXTRA_DIRECT_RULES = (
 )
 
 EXTRA_PROXY_RULES = (
+    "DOMAIN-SUFFIX,accounts.google.com",
+    "DOMAIN-SUFFIX,ai.google.dev",
+    "DOMAIN-SUFFIX,aistudio.google.com",
+    "DOMAIN-SUFFIX,apis.google.com",
+    "DOMAIN-SUFFIX,clients1.google.com",
+    "DOMAIN-SUFFIX,clients2.google.com",
+    "DOMAIN-SUFFIX,clients3.google.com",
+    "DOMAIN-SUFFIX,clients4.google.com",
+    "DOMAIN-SUFFIX,clients5.google.com",
+    "DOMAIN-SUFFIX,clients6.google.com",
     "DOMAIN-SUFFIX,chatgpt.com",
     "DOMAIN-SUFFIX,chatgpt.livekit.cloud",
     "DOMAIN-SUFFIX,fiverr-res.cloudinary.com",
     "DOMAIN-SUFFIX,fiverr.com",
     "DOMAIN-SUFFIX,fiverrcdn.com",
+    "DOMAIN-SUFFIX,geolocation.googleapis.com",
+    "DOMAIN-SUFFIX,generativelanguage.googleapis.com",
     "DOMAIN-SUFFIX,gemini.google.com",
     "DOMAIN-SUFFIX,generativeai.google",
+    "DOMAIN-SUFFIX,ggpht.com",
+    "DOMAIN-SUFFIX,googleapis.com",
+    "DOMAIN-SUFFIX,googleusercontent.com",
+    "DOMAIN-SUFFIX,gstatic.com",
+    "DOMAIN-SUFFIX,gvt1.com",
+    "DOMAIN-SUFFIX,gvt2.com",
+    "DOMAIN-SUFFIX,locationhistory-pa.googleapis.com",
+    "DOMAIN-SUFFIX,myaccount.google.com",
+    "DOMAIN-SUFFIX,oauth2.googleapis.com",
+    "DOMAIN-SUFFIX,oauthaccountmanager.googleapis.com",
+    "DOMAIN-SUFFIX,ogs.google.com",
     "DOMAIN-SUFFIX,openai.com",
     "DOMAIN-SUFFIX,oaistatic.com",
     "DOMAIN-SUFFIX,oaiusercontent.com",
     "DOMAIN-SUFFIX,odesk.com",
     "DOMAIN-SUFFIX,paypal.com",
     "DOMAIN-SUFFIX,paypalobjects.com",
+    "DOMAIN-SUFFIX,people-pa.googleapis.com",
+    "DOMAIN-SUFFIX,people.googleapis.com",
+    "DOMAIN-SUFFIX,semanticlocation-pa.googleapis.com",
+    "DOMAIN-SUFFIX,signin.google.com",
     "DOMAIN-SUFFIX,upwork.com",
     "DOMAIN-SUFFIX,upworkcdn.com",
     "DOMAIN-SUFFIX,upworkstatic.com",
+    "DOMAIN-SUFFIX,www.google.com",
     "DOMAIN-KEYWORD,chatgpt",
     "DOMAIN-KEYWORD,fiverr",
     "DOMAIN-KEYWORD,openai",
@@ -584,7 +612,16 @@ def validate_artifacts(
     if missing:
         raise ValueError("rules/direct.list is missing: " + ", ".join(missing))
 
-    required_proxy = ("paypal.com", "fiverr.com", "upwork.com", "gemini.google.com", "chatgpt.com")
+    required_proxy = (
+        "paypal.com",
+        "fiverr.com",
+        "upwork.com",
+        "gemini.google.com",
+        "chatgpt.com",
+        "accounts.google.com",
+        "geolocation.googleapis.com",
+        "www.google.com",
+    )
     proxy_text = "\n".join(proxy_rules).lower()
     missing_proxy = [value for value in required_proxy if value not in proxy_text]
     if missing_proxy:
