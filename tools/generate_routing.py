@@ -182,6 +182,20 @@ PROXY_SOURCES = (
         ),
     ),
     Source(
+        name="paypal",
+        url=(
+            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/"
+            "rule/Shadowrocket/PayPal/PayPal.list"
+        ),
+    ),
+    Source(
+        name="gemini",
+        url=(
+            "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/"
+            "rule/Shadowrocket/Gemini/Gemini.list"
+        ),
+    ),
+    Source(
         name="cloudflare-domains",
         url=(
             "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/"
@@ -192,7 +206,9 @@ PROXY_SOURCES = (
 )
 
 EXTRA_DIRECT_RULES = (
+    "DOMAIN-SUFFIX,contribute.live-video.net",
     "DOMAIN-SUFFIX,ext-twitch.tv",
+    "DOMAIN-SUFFIX,global-contribute.live-video.net",
     "DOMAIN-SUFFIX,jtvnw.net",
     "DOMAIN-SUFFIX,live-video.net",
     "DOMAIN-SUFFIX,ttvnw.net",
@@ -201,6 +217,30 @@ EXTRA_DIRECT_RULES = (
     "DOMAIN-SUFFIX,twitchsvc.net",
     "DOMAIN-KEYWORD,twitch",
     "DOMAIN-KEYWORD,ttvnw",
+)
+
+EXTRA_PROXY_RULES = (
+    "DOMAIN-SUFFIX,chatgpt.com",
+    "DOMAIN-SUFFIX,chatgpt.livekit.cloud",
+    "DOMAIN-SUFFIX,fiverr-res.cloudinary.com",
+    "DOMAIN-SUFFIX,fiverr.com",
+    "DOMAIN-SUFFIX,fiverrcdn.com",
+    "DOMAIN-SUFFIX,gemini.google.com",
+    "DOMAIN-SUFFIX,generativeai.google",
+    "DOMAIN-SUFFIX,openai.com",
+    "DOMAIN-SUFFIX,oaistatic.com",
+    "DOMAIN-SUFFIX,oaiusercontent.com",
+    "DOMAIN-SUFFIX,odesk.com",
+    "DOMAIN-SUFFIX,paypal.com",
+    "DOMAIN-SUFFIX,paypalobjects.com",
+    "DOMAIN-SUFFIX,upwork.com",
+    "DOMAIN-SUFFIX,upworkcdn.com",
+    "DOMAIN-SUFFIX,upworkstatic.com",
+    "DOMAIN-KEYWORD,chatgpt",
+    "DOMAIN-KEYWORD,fiverr",
+    "DOMAIN-KEYWORD,openai",
+    "DOMAIN-KEYWORD,paypal",
+    "DOMAIN-KEYWORD,upwork",
 )
 
 
@@ -478,6 +518,8 @@ def build_artifacts() -> tuple[bytes, bytes, bytes, bytes]:
         source_stats.append(
             {"name": source.name, "url": source.url, "rule_count": len(rules)}
         )
+    proxy_rules.extend(EXTRA_PROXY_RULES)
+    source_stats.append({"name": "extra-proxy", "rule_count": len(EXTRA_PROXY_RULES)})
 
     proxy_rules = [
         rule for rule in dedupe_preserve_order(proxy_rules)
@@ -530,11 +572,23 @@ def validate_artifacts(
     direct_rules = validate_rule_list(direct_bytes, "rules/direct.list")
     proxy_rules = validate_rule_list(proxy_bytes, "rules/proxy.list")
 
-    required_direct = ("twitch.tv", "ttvnw.net", "jtvnw.net", "live-video.net")
+    required_direct = (
+        "twitch.tv",
+        "ttvnw.net",
+        "jtvnw.net",
+        "live-video.net",
+        "contribute.live-video.net",
+    )
     direct_text = "\n".join(direct_rules).lower()
     missing = [value for value in required_direct if value not in direct_text]
     if missing:
         raise ValueError("rules/direct.list is missing: " + ", ".join(missing))
+
+    required_proxy = ("paypal.com", "fiverr.com", "upwork.com", "gemini.google.com", "chatgpt.com")
+    proxy_text = "\n".join(proxy_rules).lower()
+    missing_proxy = [value for value in required_proxy if value not in proxy_text]
+    if missing_proxy:
+        raise ValueError("rules/proxy.list is missing: " + ", ".join(missing_proxy))
 
     direct_networks = [
         network for rule in direct_rules if (network := rule_network(rule)) is not None

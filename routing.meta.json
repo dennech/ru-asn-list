@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-04-24T06:10:30Z",
+  "generated_at_utc": "2026-04-24T06:33:58Z",
   "routing_url": "https://raw.githubusercontent.com/dennech/ru-asn-list/main/routing.conf",
-  "direct_rule_count": 22,
-  "proxy_rule_count": 1488,
+  "direct_rule_count": 24,
+  "proxy_rule_count": 1758,
   "sha256": {
     "routing.conf": "cc634f11dc6ea6d1979bcd353fccab468c7506c1bb344ac1474e88ea4119451b",
-    "rules/direct.list": "a815c23dc6d96400810740906061c2147c388313ffe09b286dff54893268bfe4",
-    "rules/proxy.list": "d7c73f9dd5571216b0d22a423da7ade13fbd014ff8f2d9e79abc80a1d1d7f82b"
+    "rules/direct.list": "71f7683e278d7997bb5f4b0395e37bb48c0a0a5551e54824cda8c7a0b3cc285d",
+    "rules/proxy.list": "0e2b042aa49189013d24ef821c8b55f6e17d1048165475e07bab68dd178c866f"
   },
   "sources": [
     {
@@ -16,7 +16,7 @@
     {
       "name": "direct",
       "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Twitch/Twitch.list",
-      "rule_count": 22
+      "rule_count": 24
     },
     {
       "name": "community",
@@ -74,9 +74,23 @@
       "rule_count": 35
     },
     {
+      "name": "paypal",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/PayPal/PayPal.list",
+      "rule_count": 248
+    },
+    {
+      "name": "gemini",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Gemini/Gemini.list",
+      "rule_count": 13
+    },
+    {
       "name": "cloudflare-domains",
       "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Cloudflare/Cloudflare.list",
       "rule_count": 43
+    },
+    {
+      "name": "extra-proxy",
+      "rule_count": 21
     }
   ]
 }
