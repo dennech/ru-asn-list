@@ -1,0 +1,82 @@
+{
+  "generated_at_utc": "2026-04-24T06:10:30Z",
+  "routing_url": "https://raw.githubusercontent.com/dennech/ru-asn-list/main/routing.conf",
+  "direct_rule_count": 22,
+  "proxy_rule_count": 1488,
+  "sha256": {
+    "routing.conf": "cc634f11dc6ea6d1979bcd353fccab468c7506c1bb344ac1474e88ea4119451b",
+    "rules/direct.list": "a815c23dc6d96400810740906061c2147c388313ffe09b286dff54893268bfe4",
+    "rules/proxy.list": "d7c73f9dd5571216b0d22a423da7ade13fbd014ff8f2d9e79abc80a1d1d7f82b"
+  },
+  "sources": [
+    {
+      "name": "base",
+      "url": "https://raw.githubusercontent.com/misha-tgshv/shadowrocket-configuration-file/refs/heads/main/conf/sr_ru_basic.conf"
+    },
+    {
+      "name": "direct",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Twitch/Twitch.list",
+      "rule_count": 22
+    },
+    {
+      "name": "community",
+      "url": "https://raw.githubusercontent.com/misha-tgshv/shadowrocket-configuration-file/main/rules/domains_community.list",
+      "rule_count": 122
+    },
+    {
+      "name": "community-ip",
+      "url": "https://raw.githubusercontent.com/misha-tgshv/shadowrocket-configuration-file/main/rules/domain_ips.list",
+      "rule_count": 216
+    },
+    {
+      "name": "whatsapp-cidr",
+      "url": "https://raw.githubusercontent.com/HybridNetworks/whatsapp-cidr/refs/heads/main/WhatsApp/whatsapp_cidr_ipv4.list",
+      "rule_count": 229
+    },
+    {
+      "name": "telegram",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Telegram/Telegram.list",
+      "rule_count": 40
+    },
+    {
+      "name": "discord",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Discord/Discord.list",
+      "rule_count": 29
+    },
+    {
+      "name": "youtube",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/YouTube/YouTube.list",
+      "rule_count": 190
+    },
+    {
+      "name": "twitter",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Twitter/Twitter.list",
+      "rule_count": 33
+    },
+    {
+      "name": "whatsapp",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Whatsapp/Whatsapp.list",
+      "rule_count": 17
+    },
+    {
+      "name": "facebook",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Facebook/Facebook.list",
+      "rule_count": 570
+    },
+    {
+      "name": "instagram",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Instagram/Instagram.list",
+      "rule_count": 4
+    },
+    {
+      "name": "openai",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/OpenAI/OpenAI.list",
+      "rule_count": 35
+    },
+    {
+      "name": "cloudflare-domains",
+      "url": "https://raw.githubusercontent.com/blackmatrix7/ios_rule_script/master/rule/Shadowrocket/Cloudflare/Cloudflare.list",
+      "rule_count": 43
+    }
+  ]
+}
