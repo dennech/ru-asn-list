@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-06-11T08:23:02Z",
+  "generated_at_utc": "2026-06-12T08:10:30Z",
   "routing_url": "https://raw.githubusercontent.com/dennech/ru-asn-list/main/routing.conf",
   "direct_rule_count": 24,
-  "proxy_rule_count": 1779,
+  "proxy_rule_count": 1783,
   "sha256": {
     "routing.conf": "98e2d5e7c15e527f9e519f4d1da7cb2fb462fa383cd72dbf26004373e2ebf051",
     "rules/direct.list": "71f7683e278d7997bb5f4b0395e37bb48c0a0a5551e54824cda8c7a0b3cc285d",
-    "rules/proxy.list": "f0c10b500ff476982563b848ec630e72ceb4ca90315b3c5c7ef819edc637615c"
+    "rules/proxy.list": "b3ef7f1eb1c6d290d57ca12d05be1324d950c050bb612c3f3c24087693da475b"
   },
   "sources": [
     {
@@ -21,7 +21,7 @@
     {
       "name": "community",
       "url": "https://raw.githubusercontent.com/misha-tgshv/shadowrocket-configuration-file/main/rules/domains_community.list",
-      "rule_count": 122
+      "rule_count": 124
     },
     {
       "name": "community-ip",
