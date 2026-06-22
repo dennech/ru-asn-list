@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-06-21T08:16:20Z",
+  "generated_at_utc": "2026-06-22T09:32:35Z",
   "routing_url": "https://raw.githubusercontent.com/dennech/ru-asn-list/main/routing.conf",
   "direct_rule_count": 24,
-  "proxy_rule_count": 1779,
+  "proxy_rule_count": 1781,
   "sha256": {
     "routing.conf": "98e2d5e7c15e527f9e519f4d1da7cb2fb462fa383cd72dbf26004373e2ebf051",
     "rules/direct.list": "71f7683e278d7997bb5f4b0395e37bb48c0a0a5551e54824cda8c7a0b3cc285d",
-    "rules/proxy.list": "c4a0f0c9cf49b6409f5543601d7564cd3c78d9e96816852a326f933dc4e4c84e"
+    "rules/proxy.list": "2fd2bcb807623c2a333ccd4a7dd45dcc5c95501b1eccb42e53c0a37d79bd9861"
   },
   "sources": [
     {
