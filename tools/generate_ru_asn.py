@@ -34,6 +34,10 @@ SITE_INDEX_PATH = SITE_DIR / "index.html"
 SITE_NOJEKYLL_PATH = SITE_DIR / ".nojekyll"
 
 
+class SourceFetchError(RuntimeError):
+    """Raised when RIPEstat data cannot be fetched or decoded."""
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Generate and validate ru_asn.list from RIPEstat."
@@ -89,7 +93,7 @@ def fetch_payload() -> dict[str, Any]:
             time.sleep(delay_seconds)
             delay_seconds *= 2
 
-    raise RuntimeError(
+    raise SourceFetchError(
         "failed to fetch RIPEstat data after retries: " + "; ".join(errors)
     )
 
@@ -276,6 +280,42 @@ def load_existing_meta() -> tuple[dict[str, Any], bytes] | None:
     return meta, raw
 
 
+def fallback_meta_from_existing_list(
+    existing_meta: tuple[dict[str, Any], bytes] | None,
+    list_bytes: bytes,
+    asn_count: int,
+) -> dict[str, Any]:
+    meta: dict[str, Any] = {
+        "country": "RU",
+        "source_url": SOURCE_URL,
+        "generated_at_utc": utc_now(),
+        "asn_count": asn_count,
+        "sha256": compute_sha256(list_bytes),
+        "source_status": "fallback_existing",
+        "source_error": "fetch_failed_after_retries",
+    }
+
+    if existing_meta is not None:
+        previous_meta, _ = existing_meta
+        if (
+            previous_meta.get("query_time") not in (None, "")
+            and previous_meta.get("sha256") == meta["sha256"]
+            and previous_meta.get("asn_count") == asn_count
+        ):
+            meta = {
+                "country": meta["country"],
+                "source_url": meta["source_url"],
+                "query_time": previous_meta["query_time"],
+                "generated_at_utc": meta["generated_at_utc"],
+                "asn_count": meta["asn_count"],
+                "sha256": meta["sha256"],
+                "source_status": meta["source_status"],
+                "source_error": meta["source_error"],
+            }
+
+    return meta
+
+
 def guard_large_change(new_count: int, force_large_change: bool) -> None:
     previous_count = load_previous_count()
     if previous_count is None:
@@ -313,25 +353,42 @@ def atomic_write(path: Path, content: bytes) -> None:
 
 
 def generate_outputs(force_large_change: bool, publish_pages: bool) -> dict[str, Any]:
-    payload = fetch_payload()
-    asns = extract_asns(payload)
-    list_bytes = render_list_bytes(asns)
-    validate_list_bytes(list_bytes, "generated ru_asn.list")
-    guard_large_change(len(asns), force_large_change)
-
     previous_list_bytes = LIST_PATH.read_bytes() if LIST_PATH.exists() else None
     existing_meta = load_existing_meta()
-    meta = build_meta(payload, list_bytes, len(asns))
-    meta_bytes = render_meta_bytes(meta)
 
-    if previous_list_bytes == list_bytes and existing_meta is not None:
-        existing_meta_data, existing_meta_bytes = existing_meta
-        if (
-            existing_meta_data.get("sha256") == compute_sha256(list_bytes)
-            and existing_meta_data.get("asn_count") == len(asns)
-        ):
-            meta = existing_meta_data
-            meta_bytes = existing_meta_bytes
+    try:
+        payload = fetch_payload()
+    except SourceFetchError as exc:
+        if previous_list_bytes is None:
+            raise RuntimeError(
+                "failed to fetch RIPEstat data and no existing ru_asn.list is available"
+            ) from exc
+        asns = validate_list_bytes(previous_list_bytes, str(LIST_PATH))
+        list_bytes = previous_list_bytes
+        meta = fallback_meta_from_existing_list(existing_meta, list_bytes, len(asns))
+        meta_bytes = render_meta_bytes(meta)
+
+        print(f"WARNING: {exc}", file=sys.stderr)
+        print("WARNING: preserving existing validated ru_asn.list", file=sys.stderr)
+    else:
+        asns = extract_asns(payload)
+        list_bytes = render_list_bytes(asns)
+        validate_list_bytes(list_bytes, "generated ru_asn.list")
+        guard_large_change(len(asns), force_large_change)
+
+        meta = build_meta(payload, list_bytes, len(asns))
+        meta_bytes = render_meta_bytes(meta)
+
+        if previous_list_bytes == list_bytes and existing_meta is not None:
+            existing_meta_data, existing_meta_bytes = existing_meta
+            if (
+                existing_meta_data.get("sha256") == compute_sha256(list_bytes)
+                and existing_meta_data.get("asn_count") == len(asns)
+            ):
+                meta = existing_meta_data
+                meta_bytes = existing_meta_bytes
+
+    validate_list_bytes(list_bytes, "generated ru_asn.list")
 
     atomic_write(LIST_PATH, list_bytes)
     atomic_write(META_PATH, meta_bytes)
@@ -364,8 +421,9 @@ def main() -> int:
         force_large_change=args.force_large_change,
         publish_pages=args.publish_pages,
     )
+    action = "Preserved existing" if meta.get("source_status") else "Generated"
     print(
-        "Generated ru_asn.list with "
+        f"{action} ru_asn.list with "
         f"{meta['asn_count']} ASN entries; sha256={meta['sha256']}"
     )
     return 0
