@@ -1,12 +1,12 @@
 {
-  "generated_at_utc": "2026-09-19T08:16:29Z",
+  "generated_at_utc": "2026-09-20T08:48:18Z",
   "routing_url": "https://raw.githubusercontent.com/dennech/ru-asn-list/main/routing.conf",
   "direct_rule_count": 24,
-  "proxy_rule_count": 1781,
+  "proxy_rule_count": 1780,
   "sha256": {
     "routing.conf": "98e2d5e7c15e527f9e519f4d1da7cb2fb462fa383cd72dbf26004373e2ebf051",
     "rules/direct.list": "71f7683e278d7997bb5f4b0395e37bb48c0a0a5551e54824cda8c7a0b3cc285d",
-    "rules/proxy.list": "d775e0627b8a9806e669558e0b5e184d12e838e4bd0fcfd11a1292a6e02b150c"
+    "rules/proxy.list": "75bb48a1ec5d9272d291c562e276de8d40964597992424e768e45dbed9ccaeec"
   },
   "sources": [
     {
@@ -26,7 +26,7 @@
     {
       "name": "community-ip",
       "url": "https://raw.githubusercontent.com/misha-tgshv/shadowrocket-configuration-file/main/rules/domain_ips.list",
-      "rule_count": 213
+      "rule_count": 212
     },
     {
       "name": "whatsapp-cidr",
