@@ -1,8 +1,8 @@
 {
   "country": "RU",
   "source_url": "https://stat.ripe.net/data/country-resource-list/data.json?resource=ru",
-  "query_time": "2026-11-10T00:00:00",
-  "generated_at_utc": "2026-11-12T11:23:17Z",
+  "query_time": "2026-11-11T00:00:00",
+  "generated_at_utc": "2026-11-13T11:06:27Z",
   "asn_count": 5774,
-  "sha256": "244ab0a95e8950b2eedbd2aeba00d68d5ecf3e953e913f7b9f2308c9b9b02f5b"
+  "sha256": "57b082a5078b8d95aa183bb5bc8a831bc17d7966e5d001235a05fcba4ffcd3d2"
 }
