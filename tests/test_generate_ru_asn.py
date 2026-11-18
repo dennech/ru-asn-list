@@ -90,6 +90,8 @@ class GenerateRuAsnTests(unittest.TestCase):
         self.assertEqual(meta["query_time"], "2026-06-15T00:00:00")
         self.assertEqual(meta["source_status"], "fallback_existing")
         self.assertEqual(meta["source_error"], "fetch_failed_after_retries")
+        self.assertEqual(meta["generated_at_utc"], "2026-06-16T09:04:46Z")
+        self.assertEqual(meta["last_successful_fetch_at_utc"], "2026-06-16T09:04:46Z")
 
     def test_refreshes_metadata_after_recovery_with_unchanged_asns(self) -> None:
         payload = {
@@ -99,21 +101,33 @@ class GenerateRuAsnTests(unittest.TestCase):
             }
         }
 
-        with patch.object(self.module.urllib.request, "urlopen") as urlopen:
+        with (
+            patch.object(self.module.urllib.request, "urlopen") as urlopen,
+            patch.object(self.module, "utc_now", return_value="2026-06-15T09:00:00Z") as utc_now,
+        ):
             urlopen.return_value = io.BytesIO(json.dumps(payload).encode("utf-8"))
-            self.module.generate_outputs(False, False)
+            initial = self.module.generate_outputs(False, False)
             existing_list = self.module.LIST_PATH.read_bytes()
+            self.assertEqual(initial["last_successful_fetch_at_utc"], "2026-06-15T09:00:00Z")
 
             urlopen.side_effect = urllib.error.HTTPError(
                 self.module.SOURCE_URL, 503, "Service Unavailable", None, None
             )
-            with patch.object(self.module.time, "sleep"):
-                self.module.generate_outputs(False, False)
-            self.assertEqual(self.module.LIST_PATH.read_bytes(), existing_list)
-            fallback = json.loads(self.module.META_PATH.read_text(encoding="utf-8"))
-            self.assertEqual(fallback["source_status"], "fallback_existing")
+            for fallback_time in ("2026-06-16T09:00:00Z", "2026-06-17T09:00:00Z"):
+                utc_now.return_value = fallback_time
+                with patch.object(self.module.time, "sleep"):
+                    self.module.generate_outputs(False, False)
+                self.assertEqual(self.module.LIST_PATH.read_bytes(), existing_list)
+                fallback = json.loads(self.module.META_PATH.read_text(encoding="utf-8"))
+                self.assertEqual(fallback["source_status"], "fallback_existing")
+                self.assertEqual(fallback["fallback_at_utc"], fallback_time)
+                self.assertEqual(fallback["generated_at_utc"], "2026-06-15T09:00:00Z")
+                self.assertEqual(
+                    fallback["last_successful_fetch_at_utc"], "2026-06-15T09:00:00Z"
+                )
 
             payload["data"]["query_time"] = "2026-06-16T00:00:00"
+            utc_now.return_value = "2026-06-18T09:00:00Z"
             urlopen.side_effect = None
             urlopen.return_value = io.BytesIO(json.dumps(payload).encode("utf-8"))
             self.module.generate_outputs(False, False)
@@ -122,7 +136,27 @@ class GenerateRuAsnTests(unittest.TestCase):
         recovered = json.loads(self.module.META_PATH.read_text(encoding="utf-8"))
         self.assertNotIn("source_status", recovered)
         self.assertNotIn("source_error", recovered)
+        self.assertNotIn("fallback_at_utc", recovered)
         self.assertEqual(recovered["query_time"], "2026-06-16T00:00:00")
+        self.assertEqual(recovered["generated_at_utc"], "2026-06-15T09:00:00Z")
+        self.assertEqual(recovered["last_successful_fetch_at_utc"], "2026-06-18T09:00:00Z")
+
+    def test_legacy_fallback_date_is_not_reported_as_a_successful_fetch(self) -> None:
+        self.module.fetch_payload = lambda: {"data": {"resources": {"asn": [64510]}}}
+        old_meta = self.module.generate_outputs(False, False)
+        del old_meta["last_successful_fetch_at_utc"]
+        old_meta["source_status"] = "fallback_existing"
+        self.module.META_PATH.write_text(json.dumps(old_meta), encoding="utf-8")
+
+        with patch.object(
+            self.module, "fetch_payload", side_effect=self.module.SourceFetchError("offline")
+        ):
+            fallback = self.module.generate_outputs(False, False)
+
+        self.assertEqual(self.module.LIST_PATH.read_bytes(), b"IP-ASN,64510\n")
+        self.assertIsNone(fallback["generated_at_utc"])
+        self.assertIsNone(fallback["last_successful_fetch_at_utc"])
+        self.assertIsNotNone(fallback["fallback_at_utc"])
 
     def test_fetch_failure_without_existing_list_fails_closed(self) -> None:
         source_error = getattr(self.module, "SourceFetchError", RuntimeError)

@@ -132,23 +132,16 @@ def build_meta(payload: dict[str, Any], list_bytes: bytes, asn_count: int) -> di
     if query_time in (None, ""):
         query_time = payload.get("query_time")
 
-    meta: dict[str, Any] = {
-        "country": "RU",
-        "source_url": SOURCE_URL,
-        "generated_at_utc": utc_now(),
-        "asn_count": asn_count,
-        "sha256": compute_sha256(list_bytes),
-    }
+    now = utc_now()
+    meta: dict[str, Any] = {"country": "RU", "source_url": SOURCE_URL}
     if query_time not in (None, ""):
         meta["query_time"] = query_time
-        meta = {
-            "country": meta["country"],
-            "source_url": meta["source_url"],
-            "query_time": meta["query_time"],
-            "generated_at_utc": meta["generated_at_utc"],
-            "asn_count": meta["asn_count"],
-            "sha256": meta["sha256"],
-        }
+    meta.update(
+        generated_at_utc=now,
+        last_successful_fetch_at_utc=now,
+        asn_count=asn_count,
+        sha256=compute_sha256(list_bytes),
+    )
     return meta
 
 
@@ -158,7 +151,7 @@ def render_meta_bytes(meta: dict[str, Any]) -> bytes:
 
 def render_pages_index(meta: dict[str, Any]) -> bytes:
     title = "RU ASN List"
-    generated_at = escape(str(meta["generated_at_utc"]))
+    generated_at = escape(str(meta["generated_at_utc"] or "Unknown"))
     sha256 = escape(str(meta["sha256"]))
     asn_count = escape(str(meta["asn_count"]))
     body = f"""<!doctype html>
@@ -267,7 +260,7 @@ def load_previous_count() -> int | None:
     return previous_count
 
 
-def load_existing_meta() -> tuple[dict[str, Any], bytes] | None:
+def load_existing_meta() -> dict[str, Any] | None:
     if not META_PATH.exists():
         return None
     raw = META_PATH.read_bytes()
@@ -277,41 +270,45 @@ def load_existing_meta() -> tuple[dict[str, Any], bytes] | None:
         return None
     if not isinstance(meta, dict):
         return None
-    return meta, raw
+    return meta
+
+
+def snapshot_generated_at(meta: dict[str, Any]) -> str | None:
+    if "source_status" in meta and "fallback_at_utc" not in meta:
+        # Older fallback metadata recorded the outage in generated_at_utc.
+        return None
+    return meta.get("generated_at_utc")
 
 
 def fallback_meta_from_existing_list(
-    existing_meta: tuple[dict[str, Any], bytes] | None,
+    existing_meta: dict[str, Any] | None,
     list_bytes: bytes,
     asn_count: int,
 ) -> dict[str, Any]:
     meta: dict[str, Any] = {
         "country": "RU",
         "source_url": SOURCE_URL,
-        "generated_at_utc": utc_now(),
+        "generated_at_utc": None,
+        "last_successful_fetch_at_utc": None,
         "asn_count": asn_count,
         "sha256": compute_sha256(list_bytes),
         "source_status": "fallback_existing",
         "source_error": "fetch_failed_after_retries",
+        "fallback_at_utc": utc_now(),
     }
 
-    if existing_meta is not None:
-        previous_meta, _ = existing_meta
-        if (
-            previous_meta.get("query_time") not in (None, "")
-            and previous_meta.get("sha256") == meta["sha256"]
-            and previous_meta.get("asn_count") == asn_count
-        ):
-            meta = {
-                "country": meta["country"],
-                "source_url": meta["source_url"],
-                "query_time": previous_meta["query_time"],
-                "generated_at_utc": meta["generated_at_utc"],
-                "asn_count": meta["asn_count"],
-                "sha256": meta["sha256"],
-                "source_status": meta["source_status"],
-                "source_error": meta["source_error"],
-            }
+    if (
+        existing_meta is not None
+        and existing_meta.get("sha256") == meta["sha256"]
+        and existing_meta.get("asn_count") == asn_count
+    ):
+        if existing_meta.get("query_time") not in (None, ""):
+            meta["query_time"] = existing_meta["query_time"]
+        generated_at = snapshot_generated_at(existing_meta)
+        meta["generated_at_utc"] = generated_at
+        meta["last_successful_fetch_at_utc"] = existing_meta.get(
+            "last_successful_fetch_at_utc", generated_at
+        )
 
     return meta
 
@@ -366,8 +363,6 @@ def generate_outputs(force_large_change: bool, publish_pages: bool) -> dict[str,
         asns = validate_list_bytes(previous_list_bytes, str(LIST_PATH))
         list_bytes = previous_list_bytes
         meta = fallback_meta_from_existing_list(existing_meta, list_bytes, len(asns))
-        meta_bytes = render_meta_bytes(meta)
-
         print(f"WARNING: {exc}", file=sys.stderr)
         print("WARNING: preserving existing validated ru_asn.list", file=sys.stderr)
     else:
@@ -377,20 +372,18 @@ def generate_outputs(force_large_change: bool, publish_pages: bool) -> dict[str,
         guard_large_change(len(asns), force_large_change)
 
         meta = build_meta(payload, list_bytes, len(asns))
-        meta_bytes = render_meta_bytes(meta)
-
-        if previous_list_bytes == list_bytes and existing_meta is not None:
-            existing_meta_data, existing_meta_bytes = existing_meta
-            if (
-                existing_meta_data.get("sha256") == compute_sha256(list_bytes)
-                and existing_meta_data.get("asn_count") == len(asns)
-                and "source_status" not in existing_meta_data
-                and "source_error" not in existing_meta_data
-            ):
-                meta = existing_meta_data
-                meta_bytes = existing_meta_bytes
+        if (
+            previous_list_bytes == list_bytes
+            and existing_meta is not None
+            and existing_meta.get("sha256") == meta["sha256"]
+            and existing_meta.get("asn_count") == len(asns)
+        ):
+            generated_at = snapshot_generated_at(existing_meta)
+            if generated_at:
+                meta["generated_at_utc"] = generated_at
 
     validate_list_bytes(list_bytes, "generated ru_asn.list")
+    meta_bytes = render_meta_bytes(meta)
 
     atomic_write(LIST_PATH, list_bytes)
     atomic_write(META_PATH, meta_bytes)
