@@ -1,0 +1,30 @@
+name: Check Pull Request
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.x"
+
+      - name: Run tests
+        run: python3 -m unittest discover -s tests -v
+
+      - name: Validate published formats
+        run: |
+          python3 tools/generate_ru_asn.py --check
+          python3 tools/generate_routing.py --check

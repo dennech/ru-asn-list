@@ -455,6 +455,7 @@ def render_meta(
     proxy_bytes: bytes,
     direct_count: int,
     proxy_count: int,
+    previous_meta: dict[str, object] | None,
 ) -> bytes:
     meta = {
         "generated_at_utc": utc_now(),
@@ -468,6 +469,12 @@ def render_meta(
         },
         "sources": source_stats,
     }
+    if previous_meta is not None and all(
+        previous_meta.get(key) == value
+        for key, value in meta.items()
+        if key != "generated_at_utc"
+    ):
+        return META_PATH.read_bytes()
     return (json.dumps(meta, ensure_ascii=False, indent=2) + "\n").encode("utf-8")
 
 
@@ -475,29 +482,42 @@ def load_existing_meta() -> dict[str, object] | None:
     if not META_PATH.exists():
         return None
     try:
-        return json.loads(META_PATH.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+        meta = json.loads(META_PATH.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
         return None
+    return meta if isinstance(meta, dict) else None
 
 
-def maybe_preserve_meta(
-    meta_bytes: bytes,
-    routing_bytes: bytes,
-    direct_bytes: bytes,
-    proxy_bytes: bytes,
-) -> bytes:
-    existing = load_existing_meta()
-    if existing is None:
-        return meta_bytes
-    existing_hashes = existing.get("sha256")
-    expected_hashes = {
-        "routing.conf": sha256(routing_bytes),
-        "rules/direct.list": sha256(direct_bytes),
-        "rules/proxy.list": sha256(proxy_bytes),
-    }
-    if existing_hashes == expected_hashes:
-        return META_PATH.read_bytes()
-    return meta_bytes
+def previous_rule_counts(meta: dict[str, object] | None) -> dict[tuple[str, str], int]:
+    sources = meta.get("sources") if meta is not None else None
+    if not isinstance(sources, list):
+        return {}
+
+    counts: dict[tuple[str, str], int] = {}
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        name, url = source.get("name"), source.get("url")
+        count = source.get("upstream_rule_count", source.get("rule_count"))
+        if not isinstance(name, str) or not isinstance(url, str) or type(count) is not int:
+            continue
+        if name == DIRECT_SOURCE.name and "upstream_rule_count" not in source:
+            # The legacy DIRECT count included local rules, so use a lower bound.
+            count -= len(EXTRA_DIRECT_RULES)
+        if count > 0:
+            counts[name, url] = count
+    return counts
+
+
+def fetch_source_rules(source: Source, previous_count: int | None) -> list[str]:
+    rules = dedupe_preserve_order(source_rules(source, fetch_text(source.url)))
+    if not rules:
+        raise ValueError(f"routing source {source.name} contains no usable rules")
+    if previous_count is not None and len(rules) * 2 < previous_count:
+        raise ValueError(
+            f"routing source {source.name} dropped from {previous_count} to {len(rules)} rules"
+        )
+    return rules
 
 
 def atomic_write(path: Path, content: bytes) -> None:
@@ -525,11 +545,14 @@ def atomic_write(path: Path, content: bytes) -> None:
 
 
 def build_artifacts() -> tuple[bytes, bytes, bytes, bytes]:
+    previous_meta = load_existing_meta()
+    previous_counts = previous_rule_counts(previous_meta)
     base_config = fetch_text(BASE_CONFIG_URL)
 
-    direct_text = fetch_text(DIRECT_SOURCE.url)
-    direct_rules = source_rules(DIRECT_SOURCE, direct_text)
-    direct_rules = dedupe_preserve_order([*direct_rules, *EXTRA_DIRECT_RULES])
+    direct_upstream_rules = fetch_source_rules(
+        DIRECT_SOURCE, previous_counts.get((DIRECT_SOURCE.name, DIRECT_SOURCE.url))
+    )
+    direct_rules = dedupe_preserve_order([*direct_upstream_rules, *EXTRA_DIRECT_RULES])
     direct_networks = [
         network for rule in direct_rules if (network := rule_network(rule)) is not None
     ]
@@ -537,11 +560,15 @@ def build_artifacts() -> tuple[bytes, bytes, bytes, bytes]:
     proxy_rules: list[str] = []
     source_stats: list[dict[str, object]] = [
         {"name": "base", "url": BASE_CONFIG_URL},
-        {"name": DIRECT_SOURCE.name, "url": DIRECT_SOURCE.url, "rule_count": len(direct_rules)},
+        {
+            "name": DIRECT_SOURCE.name,
+            "url": DIRECT_SOURCE.url,
+            "rule_count": len(direct_rules),
+            "upstream_rule_count": len(direct_upstream_rules),
+        },
     ]
     for source in PROXY_SOURCES:
-        text = fetch_text(source.url)
-        rules = source_rules(source, text)
+        rules = fetch_source_rules(source, previous_counts.get((source.name, source.url)))
         proxy_rules.extend(rules)
         source_stats.append(
             {"name": source.name, "url": source.url, "rule_count": len(rules)}
@@ -565,8 +592,8 @@ def build_artifacts() -> tuple[bytes, bytes, bytes, bytes]:
         proxy_bytes,
         len(direct_rules),
         len(proxy_rules),
+        previous_meta,
     )
-    meta_bytes = maybe_preserve_meta(meta_bytes, routing_bytes, direct_bytes, proxy_bytes)
     return routing_bytes, direct_bytes, proxy_bytes, meta_bytes
 
 
