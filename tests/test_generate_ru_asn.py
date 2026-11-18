@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import tempfile
 import unittest
+import urllib.error
 from pathlib import Path
+from unittest.mock import patch
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -87,6 +90,39 @@ class GenerateRuAsnTests(unittest.TestCase):
         self.assertEqual(meta["query_time"], "2026-06-15T00:00:00")
         self.assertEqual(meta["source_status"], "fallback_existing")
         self.assertEqual(meta["source_error"], "fetch_failed_after_retries")
+
+    def test_refreshes_metadata_after_recovery_with_unchanged_asns(self) -> None:
+        payload = {
+            "data": {
+                "query_time": "2026-06-15T00:00:00",
+                "resources": {"asn": [64510, 64512]},
+            }
+        }
+
+        with patch.object(self.module.urllib.request, "urlopen") as urlopen:
+            urlopen.return_value = io.BytesIO(json.dumps(payload).encode("utf-8"))
+            self.module.generate_outputs(False, False)
+            existing_list = self.module.LIST_PATH.read_bytes()
+
+            urlopen.side_effect = urllib.error.HTTPError(
+                self.module.SOURCE_URL, 503, "Service Unavailable", None, None
+            )
+            with patch.object(self.module.time, "sleep"):
+                self.module.generate_outputs(False, False)
+            self.assertEqual(self.module.LIST_PATH.read_bytes(), existing_list)
+            fallback = json.loads(self.module.META_PATH.read_text(encoding="utf-8"))
+            self.assertEqual(fallback["source_status"], "fallback_existing")
+
+            payload["data"]["query_time"] = "2026-06-16T00:00:00"
+            urlopen.side_effect = None
+            urlopen.return_value = io.BytesIO(json.dumps(payload).encode("utf-8"))
+            self.module.generate_outputs(False, False)
+
+        self.assertEqual(self.module.LIST_PATH.read_bytes(), existing_list)
+        recovered = json.loads(self.module.META_PATH.read_text(encoding="utf-8"))
+        self.assertNotIn("source_status", recovered)
+        self.assertNotIn("source_error", recovered)
+        self.assertEqual(recovered["query_time"], "2026-06-16T00:00:00")
 
     def test_fetch_failure_without_existing_list_fails_closed(self) -> None:
         source_error = getattr(self.module, "SourceFetchError", RuntimeError)

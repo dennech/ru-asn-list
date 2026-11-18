@@ -384,6 +384,8 @@ def generate_outputs(force_large_change: bool, publish_pages: bool) -> dict[str,
             if (
                 existing_meta_data.get("sha256") == compute_sha256(list_bytes)
                 and existing_meta_data.get("asn_count") == len(asns)
+                and "source_status" not in existing_meta_data
+                and "source_error" not in existing_meta_data
             ):
                 meta = existing_meta_data
                 meta_bytes = existing_meta_bytes
